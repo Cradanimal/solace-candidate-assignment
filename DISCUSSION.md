@@ -1,0 +1,1 @@
+I didn't do much in the way of styling or low level front end work. I thought the functional improvements where more pressing but given more time I would certainly style and refactor the components.

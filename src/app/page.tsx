@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import debounce from 'lodash.debounce'
+import { log } from "console";
 
 interface Advocate {
+  id: number;
   firstName: string;
   lastName: string;
   city: string;
@@ -11,6 +14,24 @@ interface Advocate {
   yearsOfExperience: number;
   phoneNumber: string;
 }
+
+const useDebounce = (callback) => {
+  const ref = useRef();
+
+  useEffect(() => {
+    ref.current = callback;
+  }, [callback]);
+
+  const debouncedCallback = useMemo(() => {
+    const func = () => {
+      ref.current?.();
+    };
+
+    return debounce(func, 1000);
+  }, []);
+
+  return debouncedCallback;
+};
 
 export default function Home() {
   const [advocates, setAdvocates] = useState<Advocate[]>([]);
@@ -27,31 +48,38 @@ export default function Home() {
     });
   }, []);
 
-  const onChange = (e : React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-    const searchTermLower = searchTerm.toLowerCase().trim();
+  useEffect(() => {
+    if (searchTerm === "") {
+      setFilteredAdvocates(advocates);
+      return;
+    }
 
     console.log("filtering advocates...");
-    const filteredAdvocates = advocates.filter((advocate) => {
-      return (
-        advocate.firstName.toLowerCase().includes(searchTermLower) ||
-        advocate.lastName.toLowerCase().includes(searchTermLower) ||
-        advocate.city.toLowerCase().includes(searchTermLower) ||
-        advocate.degree.toLowerCase().includes(searchTermLower) ||
-        advocate.specialties.some((specialty) =>
-          specialty.toLowerCase().includes(searchTermLower)
-        ) ||
-        advocate.yearsOfExperience.toString().toLowerCase().includes(searchTermLower)
-      );
-    });
+    debouncedFilter();
+  }, [searchTerm]);
 
-    setFilteredAdvocates(filteredAdvocates);
+  const debouncedFilter = useDebounce(() => {
+    const searchTermLower = searchTerm.toLowerCase().trim();
+    fetch(`/api/advocates?search=${searchTermLower}`).then((response) => {
+      response.json().then((jsonResponse) => {
+        setAdvocates(jsonResponse.data);
+        setFilteredAdvocates(jsonResponse.data);
+      });
+    });
+  });
+
+  const onChange = (e : React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
   };
 
   const onClick = () => {
-    console.log(advocates);
     setSearchTerm("");
-    setFilteredAdvocates(advocates);
+    fetch("/api/advocates").then((response) => {
+      response.json().then((jsonResponse) => {
+        setAdvocates(jsonResponse.data);
+        setFilteredAdvocates(jsonResponse.data);
+      });
+    });
   };
 
   return (
@@ -84,7 +112,7 @@ export default function Home() {
         <tbody>
           {filteredAdvocates.map((advocate) => {
             return (
-              <tr>
+              <tr key={`${advocate.id}`}>
                 <td>{advocate.firstName}</td>
                 <td>{advocate.lastName}</td>
                 <td>{advocate.city}</td>
