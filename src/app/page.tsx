@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import debounce from 'lodash.debounce'
-import { log } from "console";
 
 interface Advocate {
   id: number;
